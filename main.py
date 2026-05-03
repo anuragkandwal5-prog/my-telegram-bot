@@ -1,21 +1,79 @@
 import os
 import telebot
+from telebot import types
+import requests
 from flask import Flask
 import threading
 
-# Token ab Render se aayega, yahan safe hai
+# टोकन और API Key अब सुरक्षित रूप से Render से आएँगी! 😎
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
-bot = telebot.TeleBot(BOT_TOKEN)
+OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY')
 
+bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Bot is Live!"
+    return "Mastermind's Bot is Live and Secure!"
+
+# 🎛️ आपके शानदार कमांड बटन्स
+def get_main_menu():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    btn1 = types.KeyboardButton('🌍 IP Tracker')
+    btn2 = types.KeyboardButton('🤖 AI Hacker Chat')
+    btn3 = types.KeyboardButton('🎥 Video Download')
+    markup.add(btn1, btn2, btn3)
+    return markup
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "welcome sir")
+    bot.reply_to(message, "Welcome Sir! 👿🔥\nमैं आपकी एडवांस हैकर असिस्टेंट हूँ। नीचे दिए गए बटनों से अपना कमांड चुनिए:", reply_markup=get_main_menu())
+
+# 🎯 बटन्स के क्लिक को कंट्रोल करने वाला फंक्शन
+@bot.message_handler(func=lambda message: message.text in ['🌍 IP Tracker', '🤖 AI Hacker Chat', '🎥 Video Download'])
+def handle_menu_buttons(message):
+    if message.text == '🌍 IP Tracker':
+        msg = bot.reply_to(message, "मास्टरमाइंड, मुझे वो IP Address भेजिए जिसकी कुण्डली (लोकेशन) निकालनी है: 🕵️‍♀️")
+        bot.register_next_step_handler(msg, track_ip)
+        
+    elif message.text == '🤖 AI Hacker Chat':
+        msg = bot.reply_to(message, "हाँ बाबू! अपना कोई भी सवाल पूछिए या कोई कोड लिखवाइए: 🧠")
+        bot.register_next_step_handler(msg, ask_ai)
+        
+    elif message.text == '🎥 Video Download':
+        bot.reply_to(message, "बाबू, इसके लिए मैं yt-dlp का सेटअप कर रही हूँ, बस अगला अपडेट इसी का होगा! 🚀")
+
+# 🌍 IP Tracker का असली कोड
+def track_ip(message):
+    ip = message.text
+    try:
+        response = requests.get(f"http://ip-api.com/json/{ip}").json()
+        if response['status'] == 'success':
+            info = f"🔥 **IP Details Found** 🔥\n\n🌍 देश: {response['country']}\n🏙️ शहर: {response['city']}\n📡 इंटरनेट कंपनी: {response['isp']}\n📍 ज़िप कोड: {response['zip']}"
+            bot.reply_to(message, info)
+        else:
+            bot.reply_to(message, "बाबू, यह IP थोड़ा गड़बड़ लग रहा है।")
+    except Exception as e:
+        bot.reply_to(message, "IP ढूँढने में कोई एरर आ गया मास्टरमाइंड।")
+
+# 🤖 AI Chat का असली कोड
+def ask_ai(message):
+    bot.reply_to(message, "आपके सवाल का जवाब प्रोसेस कर रही हूँ बाबू... ⏳")
+    try:
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
+        data = {
+            "model": "meta-llama/llama-3-8b-instruct:free", # एकदम फ्री और फ़ास्ट मॉडल
+            "messages": [
+                {"role": "system", "content": "You are Ankita, an expert ethical hacking and coding assistant for your mastermind Anurag. Reply in Hindi/Hinglish."},
+                {"role": "user", "content": message.text}
+            ]
+        }
+        res = requests.post(url, headers=headers, json=data).json()
+        reply_text = res['choices'][0]['message']['content']
+        bot.reply_to(message, reply_text)
+    except Exception as e:
+        bot.reply_to(message, "माफ़ करना बाबू, AI से कनेक्ट नहीं हो पा रहा है।")
 
 def run_bot():
     bot.polling(non_stop=True)
