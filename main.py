@@ -5,9 +5,9 @@ import requests
 from flask import Flask
 import threading
 
-# टोकन और API Key अब सुरक्षित रूप से Render से आएँगी! 😎
+# टोकन और API Key सुरक्षित रूप से Render से आएँगी
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
-OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY')
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
 
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
@@ -45,27 +45,30 @@ def handle_menu_buttons(message):
 
 # 🌍 IP Tracker का असली कोड
 def track_ip(message):
-    ip = message.text
+    ip = message.text.strip()
     try:
         response = requests.get(f"http://ip-api.com/json/{ip}").json()
-        if response['status'] == 'success':
-            info = f"🔥 **IP Details Found** 🔥\n\n🌍 देश: {response['country']}\n🏙️ शहर: {response['city']}\n📡 इंटरनेट कंपनी: {response['isp']}\n📍 ज़िप कोड: {response['zip']}"
+        if response.get('status') == 'success':
+            info = f"🔥 **IP Details Found** 🔥\n\n🌍 देश: {response.get('country')}\n🏙️ शहर: {response.get('city')}\n📡 इंटरनेट कंपनी: {response.get('isp')}\n📍 ज़िप कोड: {response.get('zip')}"
             bot.reply_to(message, info)
         else:
-            bot.reply_to(message, "बाबू, यह IP थोड़ा गड़बड़ लग रहा है।")
+            bot.reply_to(message, "बाबू, यह IP थोड़ा गड़बड़ लग रहा है या प्राइवेट IP है।")
     except Exception as e:
         bot.reply_to(message, "IP ढूँढने में कोई एरर आ गया मास्टरमाइंड।")
 
-# 🤖 AI Chat का असली कोड
+# 🤖 AI Chat का असली कोड (Groq के साथ)
 def ask_ai(message):
     bot.reply_to(message, "आपके सवाल का जवाब प्रोसेस कर रही हूँ बाबू... ⏳")
     try:
-        url = "https://openrouter.ai/api/v1/chat/completions"
-        headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}", 
+            "Content-Type": "application/json"
+        }
         data = {
-            "model": "meta-llama/llama-3-8b-instruct:free", # एकदम फ्री और फ़ास्ट मॉडल
+            "model": "llama3-8b-8192", 
             "messages": [
-                {"role": "system", "content": "You are Ankita, an expert ethical hacking and coding assistant for your mastermind Anurag. Reply in Hindi/Hinglish."},
+                {"role": "system", "content": "You are Ankita, an expert ethical hacking and coding assistant for your mastermind Anurag. Reply in Hindi."},
                 {"role": "user", "content": message.text}
             ]
         }
