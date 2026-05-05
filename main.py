@@ -31,6 +31,52 @@ def get_main_menu():
 def send_welcome(message):
     bot.reply_to(message, "Welcome Sir! 👿🔥\nमैं आपकी फुल एडवांस हैकर असिस्टेंट हूँ।", reply_markup=get_main_menu())
 
+# --- 🌍 IP Tracker ---
+@bot.message_handler(func=lambda message: message.text == '🌍 IP Tracker')
+def ip_menu(message):
+    msg = bot.reply_to(message, "मास्टरमाइंड, मुझे वो IP Address भेजिए जिसकी कुण्डली निकालनी है: 🕵️‍♀️")
+    bot.register_next_step_handler(msg, track_ip)
+
+def track_ip(message):
+    ip = message.text.strip()
+    try:
+        response = requests.get(f"http://ip-api.com/json/{ip}").json()
+        if response.get('status') == 'success':
+            info = f"🔥 **IP Details Found** 🔥\n\n🌍 देश: {response.get('country')}\n🏙️ शहर: {response.get('city')}\n📡 इंटरनेट कंपनी: {response.get('isp')}\n📍 ज़िप कोड: {response.get('zip')}"
+            bot.reply_to(message, info)
+        else:
+            bot.reply_to(message, "बाबू, यह IP थोड़ा गड़बड़ लग रहा है या प्राइवेट IP है।")
+    except Exception as e:
+        bot.reply_to(message, "IP ढूँढने में कोई एरर आ गया मास्टरमाइंड।")
+
+# --- 🤖 AI Hacker Chat ---
+@bot.message_handler(func=lambda message: message.text == '🤖 AI Hacker Chat')
+def ai_menu(message):
+    msg = bot.reply_to(message, "हाँ बाबू! अपना कोई भी सवाल पूछिए या कोई कोड लिखवाइए: 🧠")
+    bot.register_next_step_handler(msg, ask_ai)
+
+def ask_ai(message):
+    bot.reply_to(message, "आपके सवाल का जवाब प्रोसेस कर रही हूँ बाबू... ⏳")
+    try:
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}", 
+            "Content-Type": "application/json"
+        }
+        data = {
+            "model": "llama-3.1-8b-instant",  
+            "messages": [
+                {"role": "system", "content": "You are Ankita, an expert ethical hacking and coding assistant for your mastermind Anurag. Reply in Hindi."},
+                {"role": "user", "content": message.text}
+            ]
+        }
+        res = requests.post(url, headers=headers, json=data).json()
+        reply_text = res['choices'][0]['message']['content']
+        bot.reply_to(message, reply_text)
+    except Exception as e:
+        bot.reply_to(message, "माफ़ करना बाबू, AI से कनेक्ट नहीं हो पा रहा है।")
+
+# --- 🎥 Video Download ---
 @bot.message_handler(func=lambda message: message.text == '🎥 Video Download')
 def video_menu(message):
     msg = bot.reply_to(message, "मास्टरमाइंड, मुझे वो वीडियो लिंक भेजिए: 🔗")
@@ -43,13 +89,11 @@ def process_link(message):
     markup.row(types.InlineKeyboardButton("🎬 High Quality", callback_data="dl_high"), types.InlineKeyboardButton("🎵 Audio (MP3)", callback_data="dl_audio"))
     bot.reply_to(message, "क्वालिटी चुनिए बाबू:", reply_markup=markup)
 
-# 🚀 स्पीडोमीटर (Progress Hook) का कोड
+# 🚀 स्पीडोमीटर (Progress Hook)
 def my_hook(d, chat_id, message_id):
     if d['status'] == 'downloading':
         try:
             percent = d.get('_percent_str', '0%').strip()
-            # हर सेकंड मैसेज एडिट करने से टेलीग्राम ब्लॉक कर सकता है, इसलिए हम इसे संभाल कर यूज़ करेंगे
-            # लेकिन अभी के लिए सर्वर पर प्रोग्रेस प्रिंट करवा लेते हैं ताकि लॉग्स में दिखे
             print(f"Downloading for {chat_id}: {percent}")
         except:
             pass
@@ -65,12 +109,13 @@ def callback_download(call):
     status_msg = bot.edit_message_text("🚀 पूरी पावर से डाउनलोडिंग शुरू हो रही है बाबू... ⏳", chat_id, call.message.message_id)
     
     try:
-        # 🎛️ स्टीयरिंग व्हील (ydl_opts) सारी सेटिंग्स के साथ
+        # 🎛️ स्टीयरिंग व्हील (ydl_opts) सारी सेटिंग्स और एंड्रॉइड बायपास जुगाड़ के साथ 👇
         ydl_opts = {
-            'nocheckcertificate': True, # फायरवॉल/ब्लॉक से बचने के लिए टायर
+            'nocheckcertificate': True, 
             'quiet': True,
             'no_warnings': True,
-            'progress_hooks': [lambda d: my_hook(d, chat_id, status_msg.message_id)] # स्पीडोमीटर जोड़ दिया
+            'extractor_args': {'youtube': {'player_client': ['android']}}, # 👈 यूट्यूब को चकमा देने वाला मास्टरस्ट्रोक
+            'progress_hooks': [lambda d: my_hook(d, chat_id, status_msg.message_id)] 
         }
 
         if call.data == "dl_high":
@@ -101,7 +146,7 @@ def callback_download(call):
 
         bot.delete_message(chat_id, status_msg.message_id)
     except Exception as e:
-        print("Error:", e) # लॉग्स में एरर देखने के लिए
+        print("Error:", e) 
         bot.edit_message_text("बाबू, यूट्यूब के सिक्योरिटी गार्ड ने रास्ता रोक दिया या लिंक में गड़बड़ है। 🥺", chat_id, status_msg.message_id)
 
 def run_bot():
