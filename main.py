@@ -5,98 +5,54 @@ import requests
 from flask import Flask
 import threading
 import yt_dlp
+from static_ffmpeg import add_paths # ⚙️ हमारा इन-बिल्ट गियरबॉक्स (FFmpeg)
 
-# टोकन और API Key सुरक्षित रूप से Render से आएँगी
+# कोड स्टार्ट होते ही FFmpeg की शक्तियां सर्वर में डाल देगा
+add_paths()
+
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY')
 
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 
-# लिंक्स को थोड़ी देर याद रखने के लिए
 user_urls = {}
 
 @app.route('/')
 def home():
-    return "Mastermind's Bot is Live and Secure!"
+    return "Mastermind's Ultimate Bot is Live!"
 
-# 🎛️ आपके शानदार कमांड बटन्स
 def get_main_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    btn1 = types.KeyboardButton('🌍 IP Tracker')
-    btn2 = types.KeyboardButton('🤖 AI Hacker Chat')
-    btn3 = types.KeyboardButton('🎥 Video Download')
-    markup.add(btn1, btn2, btn3)
+    markup.add(types.KeyboardButton('🌍 IP Tracker'), types.KeyboardButton('🤖 AI Hacker Chat'), types.KeyboardButton('🎥 Video Download'))
     return markup
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "Welcome Sir! 👿🔥\nमैं आपकी एडवांस हैकर असिस्टेंट हूँ। नीचे दिए गए बटनों से अपना कमांड चुनिए:", reply_markup=get_main_menu())
+    bot.reply_to(message, "Welcome Sir! 👿🔥\nमैं आपकी फुल एडवांस हैकर असिस्टेंट हूँ।", reply_markup=get_main_menu())
 
-# 🎯 बटन्स के क्लिक को कंट्रोल करने वाला फंक्शन
-@bot.message_handler(func=lambda message: message.text in ['🌍 IP Tracker', '🤖 AI Hacker Chat', '🎥 Video Download'])
-def handle_menu_buttons(message):
-    if message.text == '🌍 IP Tracker':
-        msg = bot.reply_to(message, "मास्टरमाइंड, मुझे वो IP Address भेजिए जिसकी कुण्डली (लोकेशन) निकालनी है: 🕵️‍♀️")
-        bot.register_next_step_handler(msg, track_ip)
-        
-    elif message.text == '🤖 AI Hacker Chat':
-        msg = bot.reply_to(message, "हाँ बाबू! अपना कोई भी सवाल पूछिए या कोई कोड लिखवाइए: 🧠")
-        bot.register_next_step_handler(msg, ask_ai)
-        
-    elif message.text == '🎥 Video Download':
-        msg = bot.reply_to(message, "बाबू, मुझे उस वीडियो या गाने का लिंक भेजिए जिसे आप डाउनलोड करना चाहते हैं: 🔗")
-        bot.register_next_step_handler(msg, process_video_link)
+@bot.message_handler(func=lambda message: message.text == '🎥 Video Download')
+def video_menu(message):
+    msg = bot.reply_to(message, "मास्टरमाइंड, मुझे वो वीडियो लिंक भेजिए: 🔗")
+    bot.register_next_step_handler(msg, process_link)
 
-# 🌍 IP Tracker का असली कोड
-def track_ip(message):
-    ip = message.text.strip()
-    try:
-        response = requests.get(f"http://ip-api.com/json/{ip}").json()
-        if response.get('status') == 'success':
-            info = f"🔥 **IP Details Found** 🔥\n\n🌍 देश: {response.get('country')}\n🏙️ शहर: {response.get('city')}\n📡 इंटरनेट कंपनी: {response.get('isp')}\n📍 ज़िप कोड: {response.get('zip')}"
-            bot.reply_to(message, info)
-        else:
-            bot.reply_to(message, "बाबू, यह IP थोड़ा गड़बड़ लग रहा है या प्राइवेट IP है।")
-    except Exception as e:
-        bot.reply_to(message, "IP ढूँढने में कोई एरर आ गया मास्टरमाइंड।")
-
-# 🤖 AI Chat का असली कोड (नया Groq मॉडल)
-def ask_ai(message):
-    bot.reply_to(message, "आपके सवाल का जवाब प्रोसेस कर रही हूँ बाबू... ⏳")
-    try:
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {GROQ_API_KEY}", 
-            "Content-Type": "application/json"
-        }
-        data = {
-            "model": "llama-3.1-8b-instant",  # यहाँ नया मॉडल अपडेट कर दिया गया है
-            "messages": [
-                {"role": "system", "content": "You are Ankita, an expert ethical hacking and coding assistant for your mastermind Anurag. Reply in Hindi."},
-                {"role": "user", "content": message.text}
-            ]
-        }
-        res = requests.post(url, headers=headers, json=data).json()
-        reply_text = res['choices'][0]['message']['content']
-        bot.reply_to(message, reply_text)
-    except Exception as e:
-        bot.reply_to(message, "माफ़ करना बाबू, AI से कनेक्ट नहीं हो पा रहा है।")
-
-# 🎥 Video Download का असली कोड
-def process_video_link(message):
+def process_link(message):
     url = message.text.strip()
     user_urls[message.chat.id] = url
-    
     markup = types.InlineKeyboardMarkup()
-    btn1 = types.InlineKeyboardButton("🎬 High Quality", callback_data="dl_high")
-    btn2 = types.InlineKeyboardButton("📱 Data Saver (480p)", callback_data="dl_low")
-    btn3 = types.InlineKeyboardButton("🎵 Audio (MP3)", callback_data="dl_audio")
-    
-    markup.row(btn1, btn2)
-    markup.row(btn3)
-    
-    bot.reply_to(message, "आपको कौन सी क्वालिटी चाहिए मास्टरमाइंड?", reply_markup=markup)
+    markup.row(types.InlineKeyboardButton("🎬 High Quality", callback_data="dl_high"), types.InlineKeyboardButton("🎵 Audio (MP3)", callback_data="dl_audio"))
+    bot.reply_to(message, "क्वालिटी चुनिए बाबू:", reply_markup=markup)
+
+# 🚀 स्पीडोमीटर (Progress Hook) का कोड
+def my_hook(d, chat_id, message_id):
+    if d['status'] == 'downloading':
+        try:
+            percent = d.get('_percent_str', '0%').strip()
+            # हर सेकंड मैसेज एडिट करने से टेलीग्राम ब्लॉक कर सकता है, इसलिए हम इसे संभाल कर यूज़ करेंगे
+            # लेकिन अभी के लिए सर्वर पर प्रोग्रेस प्रिंट करवा लेते हैं ताकि लॉग्स में दिखे
+            print(f"Downloading for {chat_id}: {percent}")
+        except:
+            pass
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('dl_'))
 def callback_download(call):
@@ -104,45 +60,49 @@ def callback_download(call):
     url = user_urls.get(chat_id)
     
     if not url:
-        bot.answer_callback_query(call.id, "बाबू, लिंक नहीं मिला! कृपया दोबारा लिंक भेजिए।")
-        return
-        
-    bot.edit_message_text("डाउनलोड शुरू हो गया है बाबू, बस कुछ सेकंड इंतज़ार कीजिए... ⏳", chat_id, call.message.message_id)
+        return bot.answer_callback_query(call.id, "लिंक गायब हो गया बाबू!")
+
+    status_msg = bot.edit_message_text("🚀 पूरी पावर से डाउनलोडिंग शुरू हो रही है बाबू... ⏳", chat_id, call.message.message_id)
     
     try:
-        if call.data == "dl_high":
-            ydl_opts = {'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best', 'outtmpl': f'video_{chat_id}.%(ext)s'}
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-            with open(filename, 'rb') as video:
-                bot.send_video(chat_id, video)
-            os.remove(filename)
+        # 🎛️ स्टीयरिंग व्हील (ydl_opts) सारी सेटिंग्स के साथ
+        ydl_opts = {
+            'nocheckcertificate': True, # फायरवॉल/ब्लॉक से बचने के लिए टायर
+            'quiet': True,
+            'no_warnings': True,
+            'progress_hooks': [lambda d: my_hook(d, chat_id, status_msg.message_id)] # स्पीडोमीटर जोड़ दिया
+        }
 
-        elif call.data == "dl_low":
-            ydl_opts = {'format': 'best[height<=480]', 'outtmpl': f'video_low_{chat_id}.%(ext)s'}
+        if call.data == "dl_high":
+            ydl_opts['format'] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+            ydl_opts['outtmpl'] = f'video_{chat_id}.%(ext)s'
+            
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 filename = ydl.prepare_filename(info)
+            bot.edit_message_text("✅ डाउनलोड पूरा हुआ! अब फाइल भेज रही हूँ...", chat_id, status_msg.message_id)
             with open(filename, 'rb') as video:
                 bot.send_video(chat_id, video)
             os.remove(filename)
 
         elif call.data == "dl_audio":
-            ydl_opts = {'format': 'bestaudio/best', 'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}], 'outtmpl': f'audio_{chat_id}.%(ext)s'}
+            ydl_opts['format'] = 'bestaudio/best'
+            ydl_opts['postprocessors'] = [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}]
+            ydl_opts['outtmpl'] = f'audio_{chat_id}.%(ext)s'
+            
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 filename = ydl.prepare_filename(info)
                 filename_mp3 = filename.rsplit('.', 1)[0] + '.mp3'
+            bot.edit_message_text("✅ ऑडियो बन गया! बस सेंड कर रही हूँ...", chat_id, status_msg.message_id)
             with open(filename_mp3, 'rb') as audio:
                 bot.send_audio(chat_id, audio)
             os.remove(filename_mp3)
-            
-        # डाउनलोड होने के बाद वो मेनू वाला मैसेज डिलीट कर देंगे
-        bot.delete_message(chat_id, call.message.message_id)
-        
+
+        bot.delete_message(chat_id, status_msg.message_id)
     except Exception as e:
-        bot.send_message(chat_id, "बाबू, डाउनलोड करने में कोई दिक्कत आ गई या लिंक प्राइवेट है।")
+        print("Error:", e) # लॉग्स में एरर देखने के लिए
+        bot.edit_message_text("बाबू, यूट्यूब के सिक्योरिटी गार्ड ने रास्ता रोक दिया या लिंक में गड़बड़ है। 🥺", chat_id, status_msg.message_id)
 
 def run_bot():
     bot.polling(non_stop=True)
