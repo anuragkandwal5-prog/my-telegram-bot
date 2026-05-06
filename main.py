@@ -4,7 +4,7 @@ from telebot import types
 from flask import Flask
 import threading
 import yt_dlp
-from static_ffmpeg import add_paths # ⚙️ गियरबॉक्स
+from static_ffmpeg import add_paths
 
 # सर्वर में FFmpeg की शक्तियां डालना
 add_paths()
@@ -23,39 +23,33 @@ def home():
 def send_welcome(message):
     bot.reply_to(message, "Welcome Sir! 👿🔥\nमैं आपका डेडिकेटेड वीडियो डाउनलोडर बॉट हूँ। मुझे कोई भी वीडियो लिंक भेजिए!")
 
-# 🎯 लाइव लिस्ट निकालने वाला फंक्शन (बैकग्राउंड में चलेगा ताकि बॉट ना अटके)
+# 🎯 लाइव लिस्ट निकालने वाला फंक्शन
 def fetch_and_send_qualities(chat_id, url, message_id):
+    # 👇 यहाँ से Android वाली लाइन हमेशा के लिए हटा दी गई है
     ydl_opts = {
         'quiet': True, 
         'nocheckcertificate': True, 
-        'cookiefile': 'cookies.txt', # वीआईपी पास
-        'extractor_args': {'youtube': {'player_client': ['android']}}
+        'cookiefile': 'cookies.txt'
     }
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # बिना डाउनलोड किए सिर्फ जानकारी और लिस्ट निकालना
             info = ydl.extract_info(url, download=False)
             formats = info.get('formats', [])
             
-            # वीडियो की सारी मौजूद क्वालिटी (heights) ढूंढना
             resolutions = set()
             for f in formats:
                 if f.get('vcodec') != 'none' and f.get('height'):
                     resolutions.add(f.get('height'))
             
-            # क्वालिटी को घटते क्रम में लगाना (जैसे 1080, 720, 480...)
             sorted_res = sorted(list(resolutions), reverse=True)
-            
             markup = types.InlineKeyboardMarkup(row_width=2)
             buttons = []
             
-            # जो क्वालिटी यूट्यूब पर है, सिर्फ उसी का बटन बनाना
             for res in sorted_res:
                 if res in [144, 240, 360, 480, 720, 1080, 1440, 2160]:
                     buttons.append(types.InlineKeyboardButton(f"🎬 {res}p", callback_data=f"dl_{res}"))
             
-            # अगर कोई फिक्स रिज़ॉल्यूशन ना मिले तो एक 'Best' का बटन दे देना
             if not buttons:
                 buttons.append(types.InlineKeyboardButton("🎬 Best Video", callback_data="dl_best"))
                 
@@ -71,11 +65,7 @@ def fetch_and_send_qualities(chat_id, url, message_id):
 def process_link_direct(message):
     url = message.text.strip()
     user_urls[message.chat.id] = url
-    
-    # जब तक लिस्ट आ रही है, तब तक यह मैसेज दिखेगा
     msg = bot.reply_to(message, "यूट्यूब के सर्वर से क्वालिटी की लिस्ट निकाल रही हूँ बाबू... ⏳")
-    
-    # लिस्ट मँगवाने वाले काम को अलग धागे (Thread) में भेजना
     threading.Thread(target=fetch_and_send_qualities, args=(message.chat.id, url, msg.message_id)).start()
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('dl_'))
@@ -87,17 +77,15 @@ def callback_download(call):
         return bot.answer_callback_query(call.id, "लिंक गायब हो गया बाबू, फिर से भेजिए!")
 
     status_msg = bot.edit_message_text("🚀 पूरी पावर से डाउनलोडिंग शुरू हो रही है बाबू... ⏳", chat_id, call.message.message_id)
-    
-    # यूज़र ने कौन सी क्वालिटी चुनी (जैसे '1080', 'audio', 'best')
     res_str = call.data.split('_')[1]
     
     try:
+        # 👇 यहाँ से भी Android वाली लाइन हटा दी गई है
         ydl_opts = {
             'nocheckcertificate': True, 
             'quiet': True,
             'no_warnings': True,
-            'cookiefile': 'cookies.txt',
-            'extractor_args': {'youtube': {'player_client': ['android']}}
+            'cookiefile': 'cookies.txt'
         }
 
         if res_str == 'audio':
@@ -110,7 +98,6 @@ def callback_download(call):
             ydl_opts['outtmpl'] = f'video_best_{chat_id}.%(ext)s'
         else:
             height = int(res_str)
-            # जो क्वालिटी चुनी है, वही लाना और अपने आप MP4 में बदल देना
             ydl_opts['format'] = f'bestvideo[height<={height}]+bestaudio/best'
             ydl_opts['merge_output_format'] = 'mp4'
             ydl_opts['outtmpl'] = f'video_{height}_{chat_id}.%(ext)s'
