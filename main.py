@@ -25,15 +25,17 @@ def send_welcome(message):
 
 # 🎯 लाइव लिस्ट निकालने वाला फंक्शन
 def fetch_and_send_qualities(chat_id, url, message_id):
-    # 👇 यहाँ से Android वाली लाइन हमेशा के लिए हटा दी गई है
     ydl_opts = {
         'quiet': True, 
         'nocheckcertificate': True, 
-        'cookiefile': 'cookies.txt'
+        'cookiefile': 'cookies.txt',
+        # 👇 इस बार हम इसे सख्ती से 'web' (कंप्यूटर) क्लाइंट इस्तेमाल करने का आर्डर दे रहे हैं!
+        'extractor_args': {'youtube': {'player_client': ['web']}} 
     }
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # यह लाइन ही पाइथन का असली '--list-formats' है
             info = ydl.extract_info(url, download=False)
             formats = info.get('formats', [])
             
@@ -80,12 +82,13 @@ def callback_download(call):
     res_str = call.data.split('_')[1]
     
     try:
-        # 👇 यहाँ से भी Android वाली लाइन हटा दी गई है
         ydl_opts = {
             'nocheckcertificate': True, 
             'quiet': True,
             'no_warnings': True,
-            'cookiefile': 'cookies.txt'
+            'cookiefile': 'cookies.txt',
+            # 👇 यहाँ भी 'web' क्लाइंट
+            'extractor_args': {'youtube': {'player_client': ['web']}}
         }
 
         if res_str == 'audio':
