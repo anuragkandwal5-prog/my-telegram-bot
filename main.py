@@ -23,17 +23,16 @@ def home():
 def send_welcome(message):
     bot.reply_to(message, "Welcome Sir! 👿🔥\nमैं आपका डेडिकेटेड और सुपरफास्ट वीडियो डाउनलोडर बॉट हूँ। मुझे कोई भी वीडियो या रील का लिंक भेजिए!")
 
-# 🎯 अब आप डायरेक्ट लिंक भेजेंगे तो बॉट हमेशा फिक्स बटन देगा
+# 🎯 डायरेक्ट लिंक भेजते ही फिक्स बटन्स आएँगे
 @bot.message_handler(func=lambda message: message.text.startswith('http'))
 def process_link_direct(message):
     url = message.text.strip()
     user_urls[message.chat.id] = url
     
-    # 🎛️ क्वालिटी चुनने के फिक्स शानदार बटन्स (जैसे बाकी प्रो बॉट्स में होते हैं)
     markup = types.InlineKeyboardMarkup(row_width=2)
     btn1080 = types.InlineKeyboardButton("🎬 1080p (Full HD)", callback_data="dl_1080")
     btn720 = types.InlineKeyboardButton("📺 720p (HD)", callback_data="dl_720")
-    btn480 = types.InlineKeyboardButton("📱 480p (Data Saver)", callback_data="dl_480")
+    btn480 = types.InlineKeyboardButton("📱 480p", callback_data="dl_480")
     btnAudio = types.InlineKeyboardButton("🎵 Audio (MP3)", callback_data="dl_audio")
     
     markup.add(btn1080, btn720, btn480, btnAudio)
@@ -50,16 +49,16 @@ def callback_download(call):
     status_msg = bot.edit_message_text("🚀 पूरी पावर से डाउनलोडिंग शुरू हो रही है बाबू... ⏳", chat_id, call.message.message_id)
     
     try:
-        # 🎛️ स्टीयरिंग व्हील (ydl_opts) + VIP Pass (Cookies)
+        # 🎛️ स्टीयरिंग व्हील (ydl_opts) + VIP Pass (Cookies) + Web Client (असली फिक्स)
         ydl_opts = {
             'nocheckcertificate': True, 
             'quiet': True,
             'no_warnings': True,
-            'cookiefile': 'cookies.txt', # 👈 हमारा वीआईपी पास
-            'extractor_args': {'youtube': {'player_client': ['web']}} 
+            'cookiefile': 'cookies.txt', 
+            'extractor_args': {'youtube': {'player_client': ['web']}} # 👈 यूट्यूब को बायपास करने का मास्टरस्ट्रोक
         }
 
-        # 🎯 यूज़र की पसंद के हिसाब से स्मार्ट क्वालिटी सेट करना
+        # 🎯 यूज़र की पसंद के हिसाब से क्वालिटी सेट करना
         if call.data == "dl_1080":
             ydl_opts['format'] = 'bestvideo[height<=1080]+bestaudio/best'
             ydl_opts['merge_output_format'] = 'mp4'
@@ -100,7 +99,7 @@ def callback_download(call):
 
     except Exception as e:
         print("Error:", e) 
-        bot.edit_message_text("बाबू, डाउनलोड फेल हो गया। यह वीडियो प्राइवेट है या यूट्यूब ने ब्लॉक कर दिया है। 🥺", chat_id, status_msg.message_id)
+        bot.edit_message_text("बाबू, यूट्यूब ने रास्ता रोक दिया या डाउनलोड फेल हो गया। 🥺", chat_id, status_msg.message_id)
 
 def run_bot():
     bot.polling(non_stop=True)
