@@ -109,12 +109,13 @@ def callback_download(call):
     status_msg = bot.edit_message_text("🚀 पूरी पावर से डाउनलोडिंग शुरू हो रही है बाबू... ⏳", chat_id, call.message.message_id)
     
     try:
-        # 🎛️ स्टीयरिंग व्हील (ydl_opts) सारी सेटिंग्स और एंड्रॉइड बायपास जुगाड़ के साथ 👇
+        # 🎛️ स्टीयरिंग व्हील (ydl_opts) सारी सेटिंग्स और हमारे VIP Pass (Cookies) के साथ 👇
         ydl_opts = {
             'nocheckcertificate': True, 
             'quiet': True,
             'no_warnings': True,
-            'extractor_args': {'youtube': {'player_client': ['android']}}, # 👈 यूट्यूब को चकमा देने वाला मास्टरस्ट्रोक
+            'cookiefile': 'cookies.txt', # 👈 हमारा वीआईपी पास (Cookies) यहाँ लग गया!
+            'extractor_args': {'youtube': {'player_client': ['android']}}, 
             'progress_hooks': [lambda d: my_hook(d, chat_id, status_msg.message_id)] 
         }
 
